@@ -16,6 +16,7 @@ $DomainControllers = @("","")
 # For clearing log
 $null = Out-File -FilePath $LogFile -append
   
+# Array for storing current employees info
 $profile    =  [PSCustomObject] @{
     Badge   =  ' '
     Name    =  ' '
@@ -35,6 +36,7 @@ $profile    =  [PSCustomObject] @{
     OU      =  ' '    
 }
 
+# Pre-lockout check
 Function InitializationLockoutCheck() {
     # If Account Locked
     if($profile.Locked -eq $true) {        
@@ -81,6 +83,7 @@ Function ProfileReviewDescriptions() {
     ProfileReviewMenu
 }
 
+# Check to see if account is not disabled
 Function CheckEnabled() {
     
     # If Account Enabled/Disabled
@@ -100,6 +103,7 @@ Function CheckEnabled() {
     }    
 }
 
+# Check type of account
 Function CheckType() {
     If($($profile.Dist) -match 'OU=Employees') {
         Write-Host -n ("{0,25}" -f "Type: ") -ForegroundColor Gray; Write-Host ("{0,4}" -f "<redacted> Employee") -ForegroundColor Green;
@@ -112,6 +116,7 @@ Function CheckType() {
     }    
 }
 
+# Menu for user selection
 Function ProfileReviewMenu() {        
     write-host ("" -f "");
     write-host -n ("{0,30}" -f "Reset Password");                                  write-host ("{0,36}" -f "Permissions");
@@ -127,9 +132,8 @@ Function ProfileReviewMenu() {
     switch($userMenuInput)
     {
         1 {
-            Generate-Password -badge $profile.Badge -name $profile.Name -option 2
-            
-        }
+            Generate-Password -badge $profile.Badge -name $profile.Name -option 2            
+          }
         2 {
             CheckPasswordLock              
         }
@@ -143,17 +147,17 @@ Function ProfileReviewMenu() {
             CompareBadgePermissions
             Read-Host
             InitializeEnvironment -badge $profile.Badge 
-        }
-               
+        }               
         0 {
             InitializeEnvironment -badge $profile.Badge  
-        }
-        's' {
+          }
+       's'{
             Introduction
-        }
+          }
     }    
 }
 
+# Compare memberships
 Function CompareBadgePermissions {
        
     # Get Badge From User
@@ -171,8 +175,7 @@ Function CompareBadgePermissions {
         NameA = $profile.Name -split(', ') #
         Dist  = $UserProperty.DistinguishedName        
         NameB = $UserProperty.DisplayName -split(', ')        
-    }
-    
+    }    
 
     $a = Get-ADPrincipalGroupMembership -Identity $($profile.Dist) -Server '<redacted>.<redacted>.org' | sort-object | Select name;
     $b = Get-ADPrincipalGroupMembership -Identity $($compare.Dist) -Server '<redacted>.<redacted>.org' | sort-object | Select name;        
@@ -188,6 +191,7 @@ Function CompareBadgePermissions {
     Write-Host ("{0,48}" -f "Press [ENTER] to return to review.") -ForegroundColor Green
 }
 
+# Check if user lockedout
 Function GetUserLockout
  {     
      $LockedOutStats = @()
@@ -204,6 +208,7 @@ Function GetUserLockout
      #$LockedOutStats | Format-Table -Property Server,LockedOut }
  }
 
+# Formatting with colors!
  Function Format-Color([hashtable] $Colors = @{}, [switch] $SimpleMatch)
  {
      $lines = ($input | Out-String) -replace "`r", "" -split "`n"
@@ -221,6 +226,7 @@ Function GetUserLockout
      }
  }
 
+# Check permissions on one user
 Function CheckPermissionsCurrentUser() {
     Clear-Host ;
     Write-Host "`n`n`t`t" -n ; Write-Host "Please wait while permissions are retrieved..." -Fore Cyan ;
@@ -247,6 +253,7 @@ Function CheckPermissionsCurrentUser() {
     InitializeEnvironment -badge $profile.Badge    
 }
 
+# Check lockout again? Im so confused...
 Function CheckPasswordLock {
     if($profile.Active -eq $true) # If Account ENABLED and Account is LOCKED # -and $profile.Locked -eq $true
     {
@@ -280,7 +287,6 @@ Function CheckPasswordLock {
 }
 
 # Generate Random Password for Non-<redacted>/<redacted> Employees
-
 Function Generate-Password ([string]$badge, [string]$name, [int]$option)
 {   
     if ($profile.Active -eq $false)
@@ -343,6 +349,7 @@ Function Generate-Password ([string]$badge, [string]$name, [int]$option)
     }
 }
 
+# It's like a captch to prevent screw-ups... erm.. screwing up...
 Function MathsBruh([string]$password) {
 
     # Read User Key Esc/Enter
@@ -375,6 +382,7 @@ Function MathsBruh([string]$password) {
     InitializeEnvironment -badge $profile.Badge      
 }
 
+# Log menu, needs to show some history
 Function LogMenu()
 {
     Clear-Host
@@ -413,6 +421,7 @@ Function LogMenu()
                 LogMenu;
 }
 
+# Sift through logs, find whats needed 
 Function LogFilter ([string]$filter)
 {
     foreach ($line in Get-Content $LogFile | where {$_ -ne "" -and $_ -match $filter})
@@ -421,9 +430,8 @@ Function LogFilter ([string]$filter)
     }
 }
 
-# This will initialize the badge properties to work with
+# This will pre-cache the badge properties to work with
 # and will be used globally between functions
-
 Function InitializeEnvironment([string]$badge) {    
     
     Try {
@@ -459,6 +467,7 @@ Function InitializeEnvironment([string]$badge) {
     ProfileReviewDescriptions    
 }
 
+#  Hello
 Function Introduction() {
     Clear-Host
     While ($userInput -ne 'q')   
@@ -482,9 +491,11 @@ Function Introduction() {
     }
 }
 
+# Order of ops with scripting, unfortunately
 Introduction
 
- Write-Host "`n`n`t`t Log for recently managed users." -Fore White -Back Blue "`n" ;                
+# Keeps log of actions performed in this tool
+Write-Host "`n`n`t`t Log for recently managed users." -Fore White -Back Blue "`n" ;                
             foreach ($line in Get-Content $LogFile)
             {
                 Write-Host -Fore Cyan "`t`t" $line ;
